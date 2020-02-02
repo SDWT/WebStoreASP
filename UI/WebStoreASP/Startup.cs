@@ -5,9 +5,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using WebStore.Interfaces.Api;
 using WebStore.Interfaces.DataProviders;
-using WebStore.Services.DataProviders.MSSQLDataProvider;
-using WebStore.DAL.SQLDBData;
-using Microsoft.EntityFrameworkCore;
 using WebStore.Domain.Entity.Identity;
 using Microsoft.AspNetCore.Identity;
 using WebStore.Services.Database;
@@ -16,6 +13,9 @@ using WebStore.Clients.Values;
 using WebStore.Clients.Employees;
 using WebStore.Clients.Products;
 using WebStore.Clients.Orders;
+using WebStore.Clients.Identity;
+using Microsoft.Extensions.Logging;
+using WebStore.Logger;
 
 namespace WebStore
 {
@@ -28,19 +28,28 @@ namespace WebStore
         public void ConfigureServices(IServiceCollection services)
         {
             
-            services.AddDbContext<WebStoreDBContext>(opt=>
-                opt.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
             services.AddScoped<IEmployeeService, EmployeesClient>();
             services.AddScoped<IProductService, ProductsClient>();
-            services.AddScoped<IProductDataProvider, ProductDataProvider>();
             services.AddScoped<ICartDataProvider, CookieCartProvider>();
+            services.AddScoped<ICartStore, CartStore>();
             services.AddScoped<IOrderService, OrdersClient>();
             services.AddTransient<WebStoreDataInitialize>();
 
             services.AddTransient<IValuesService, ValuesClient>();
 
+            services.AddTransient<IUserStore<User>, UsersClient>();
+            services.AddTransient<IUserRoleStore<User>, UsersClient>();
+            services.AddTransient<IUserClaimStore<User>, UsersClient>();
+            services.AddTransient<IUserPasswordStore<User>, UsersClient>();
+            services.AddTransient<IUserEmailStore<User>, UsersClient>();
+            services.AddTransient<IUserPhoneNumberStore<User>, UsersClient>();
+            services.AddTransient<IUserTwoFactorStore<User>, UsersClient>();
+            services.AddTransient<IUserLoginStore<User>, UsersClient>();
+            services.AddTransient<IUserLockoutStore<User>, UsersClient>();
+
+            services.AddTransient<IRoleStore<Role>, RolesClient>();
+
             services.AddIdentity<User, Role>()
-                .AddEntityFrameworkStores<WebStoreDBContext>()
                 .AddDefaultTokenProviders();
 
             services.Configure<IdentityOptions>(
@@ -70,10 +79,9 @@ namespace WebStore
             services.AddMvc();
         }
 
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, WebStoreDataInitialize webStoreDataInitialize)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory logger)
         {
-            webStoreDataInitialize.InitialAsync().Wait();
-            webStoreDataInitialize.IdentityInitialAsync().Wait();
+            logger.AddLog4Net();
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
